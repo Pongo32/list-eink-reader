@@ -1,0 +1,1494 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e7e5df">
+  <title>Лист — макет читалки</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #171715;
+      --ink-soft: #44433f;
+      --muted: #6b6963;
+      --line: #aaa79f;
+      --line-light: #cfccc4;
+      --paper: #f5f4ef;
+      --paper-deep: #e8e6df;
+      --panel: #dedcd5;
+      --shelf: #c9c6bd;
+      --white: #fbfaf6;
+      --shadow: rgba(25, 24, 21, .14);
+      --reader-font-size: 19px;
+      font-family: Arial, Helvetica, sans-serif;
+      font-synthesis: none;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 0;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background: #d3d1ca;
+    }
+
+    button,
+    input {
+      color: inherit;
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid var(--ink);
+      outline-offset: 3px;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 228px minmax(0, 1fr);
+      width: min(1440px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: var(--paper);
+      box-shadow: 0 0 30px var(--shadow);
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      padding: 28px 18px 22px;
+      border-right: 1px solid var(--line-light);
+      background: #e2e0d9;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 8px 34px;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid var(--ink);
+      background: var(--white);
+      box-shadow: 3px 3px 0 #b8b5ad;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 25px;
+      font-weight: 700;
+    }
+
+    .brand-name {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 23px;
+      letter-spacing: -.5px;
+    }
+
+    .brand-caption {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .nav-label,
+    .section-eyebrow {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .nav-label {
+      margin: 0 10px 10px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 5px;
+    }
+
+    .nav-button {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      width: 100%;
+      min-height: 42px;
+      padding: 0 11px;
+      border: 1px solid transparent;
+      border-radius: 2px;
+      background: transparent;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .nav-button[aria-current="page"] {
+      border-color: #b7b4ac;
+      background: #d3d1ca;
+      font-weight: 700;
+    }
+
+    .nav-icon {
+      width: 18px;
+      color: var(--ink-soft);
+      font-size: 17px;
+      text-align: center;
+    }
+
+    .sidebar-rule {
+      height: 1px;
+      margin: 24px 8px 20px;
+      border: 0;
+      background: var(--line-light);
+    }
+
+    .sidebar-note {
+      margin: auto 8px 0;
+      padding: 14px 0 0;
+      border-top: 1px solid var(--line-light);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .sidebar-note strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink-soft);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .main {
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 78px;
+      padding: 16px 38px;
+      border-bottom: 1px solid var(--line-light);
+      background: rgba(251, 250, 246, .55);
+    }
+
+    .topbar-note {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .prototype-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      color: var(--ink-soft);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .prototype-dot {
+      width: 7px;
+      height: 7px;
+      border: 1px solid var(--ink);
+      border-radius: 50%;
+      background: #99968e;
+    }
+
+    .content {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 42px 38px 56px;
+    }
+
+    .page-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .section-eyebrow {
+      margin: 0 0 9px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(30px, 4vw, 42px);
+      font-weight: 400;
+      letter-spacing: -.7px;
+    }
+
+    .heading-detail {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .primary-button,
+    .secondary-button,
+    .icon-button,
+    .page-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 42px;
+      border: 1px solid var(--ink);
+      border-radius: 2px;
+      background: var(--ink);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .primary-button {
+      padding: 0 15px;
+    }
+
+    .primary-button:hover,
+    .page-button:hover {
+      background: #35342f;
+    }
+
+    .secondary-button,
+    .icon-button {
+      border-color: var(--line);
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .secondary-button {
+      padding: 0 14px;
+    }
+
+    .icon-button {
+      width: 42px;
+      padding: 0;
+      font-size: 18px;
+    }
+
+    .library-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin: 0 0 24px;
+      padding: 14px 0;
+      border-top: 1px solid var(--line-light);
+      border-bottom: 1px solid var(--line-light);
+    }
+
+    .filter-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .filter-button {
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .filter-button[aria-pressed="true"] {
+      border-color: var(--line);
+      background: #e8e6df;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .search {
+      width: min(250px, 42%);
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: var(--white);
+      font-size: 13px;
+    }
+
+    .shelf-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 0 0 14px;
+    }
+
+    .shelf-heading h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 20px;
+      font-weight: 400;
+    }
+
+    .book-count {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .shelf {
+      position: relative;
+      padding: 18px 18px 27px;
+      border: 1px solid #b9b6ae;
+      background:
+        repeating-linear-gradient(0deg, transparent 0 8px, rgba(62, 60, 55, .035) 9px 10px),
+        #d9d7d0;
+    }
+
+    .shelf::after {
+      position: absolute;
+      right: 0;
+      bottom: 8px;
+      left: 0;
+      height: 7px;
+      border-top: 1px solid #a6a39b;
+      border-bottom: 1px solid #aaa79f;
+      background: #c4c1b9;
+      content: "";
+    }
+
+    .book-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 24px 18px;
+      padding-bottom: 7px;
+    }
+
+    .book-card {
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid transparent;
+      text-align: center;
+    }
+
+    .book-card[hidden] {
+      display: none;
+    }
+
+    .cover-button {
+      display: block;
+      width: min(100%, 168px);
+      aspect-ratio: .71;
+      margin: 0 auto 13px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      text-align: left;
+    }
+
+    .cover {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      padding: 13px 12px;
+      border: 1px solid #55534e;
+      box-shadow: 4px 5px 0 rgba(38, 37, 33, .22);
+      color: #161614;
+    }
+
+    .cover::before,
+    .cover::after {
+      position: absolute;
+      content: "";
+      pointer-events: none;
+    }
+
+    .cover::before {
+      inset: 7px;
+      border: 1px solid rgba(25, 24, 22, .45);
+    }
+
+    .cover::after {
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 28%;
+      border-top: 1px solid rgba(25, 24, 22, .4);
+      background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(25, 24, 22, .12) 7px 8px);
+    }
+
+    .cover--north {
+      background: linear-gradient(160deg, #d7d5ce 0 44%, #a9a69d 44% 64%, #c4c1b8 64%);
+    }
+
+    .cover--garden {
+      background: repeating-linear-gradient(90deg, #c2c0b8 0 14px, #dedcd5 15px 19px, #aaa79f 20px 21px);
+    }
+
+    .cover--atlas {
+      background: radial-gradient(ellipse at 50% 62%, #efeee8 0 18%, transparent 19%), linear-gradient(135deg, #b5b2aa 0 48%, #d2d0c8 48%);
+    }
+
+    .cover--letters {
+      background: repeating-linear-gradient(0deg, #d8d6cf 0 12px, #bdbab1 13px 14px);
+    }
+
+    .cover-topline,
+    .cover-title,
+    .cover-author {
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover-topline {
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .cover-title {
+      max-width: 130px;
+      margin: auto 0 7px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(16px, 1.75vw, 23px);
+      line-height: 1.05;
+    }
+
+    .cover-author {
+      margin: 0;
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .book-title {
+      display: block;
+      overflow: hidden;
+      margin-bottom: 5px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 15px;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .book-author {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .book-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      color: var(--ink-soft);
+      font-size: 10px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .meta-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    .book-progress {
+      width: min(100%, 168px);
+      height: 3px;
+      margin: 12px auto 0;
+      background: #b7b4ac;
+    }
+
+    .book-progress span {
+      display: block;
+      height: 100%;
+      background: #3a3935;
+    }
+
+    .continue-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 24px;
+      margin-top: 34px;
+      padding: 19px 21px;
+      border: 1px solid var(--line-light);
+      background: #ebe9e2;
+    }
+
+    .continue-copy .section-eyebrow {
+      margin-bottom: 7px;
+    }
+
+    .continue-copy h3 {
+      margin: 0 0 4px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 19px;
+      font-weight: 400;
+    }
+
+    .continue-copy p:last-child {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .empty-state {
+      display: none;
+      padding: 32px 16px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .reader-screen {
+      display: none;
+      min-height: calc(100vh - 78px);
+      background: #e5e3dc;
+    }
+
+    .reader-screen.is-active {
+      display: block;
+    }
+
+    .library-screen.is-hidden {
+      display: none;
+    }
+
+    .reader-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 68px;
+      padding: 12px 30px;
+      border-bottom: 1px solid var(--line-light);
+      background: #f0efe9;
+    }
+
+    .reader-book-title {
+      overflow: hidden;
+      max-width: 50vw;
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      font-weight: 400;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .reader-toolbar-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .reader-stage {
+      display: grid;
+      grid-template-columns: minmax(42px, 1fr) minmax(300px, 700px) minmax(42px, 1fr);
+      align-items: center;
+      gap: 15px;
+      max-width: 1120px;
+      min-height: calc(100vh - 180px);
+      margin: 0 auto;
+      padding: 25px 22px;
+    }
+
+    .page {
+      position: relative;
+      min-height: min(68vh, 690px);
+      padding: clamp(28px, 5vw, 66px) clamp(26px, 7vw, 86px);
+      border: 1px solid #d5d2c8;
+      background: #fffefa;
+      box-shadow: 0 5px 19px rgba(27, 26, 22, .12);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: var(--reader-font-size);
+      line-height: 1.72;
+    }
+
+    .page-kicker {
+      margin-bottom: 34px;
+      color: #66635d;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10px;
+      letter-spacing: .15em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .page h2 {
+      margin: 0 0 23px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.35em;
+      font-weight: 400;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .page-copy p {
+      margin: 0 0 1em;
+      text-indent: 1.4em;
+    }
+
+    .page-copy p:first-child {
+      text-indent: 0;
+    }
+
+    .page-number {
+      position: absolute;
+      right: 0;
+      bottom: 24px;
+      left: 0;
+      color: #77746d;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .page-button {
+      width: 42px;
+      height: 42px;
+      justify-self: center;
+      border-color: var(--line);
+      background: #efeee8;
+      color: var(--ink);
+      font-size: 19px;
+    }
+
+    .page-button:disabled {
+      cursor: default;
+      opacity: .4;
+    }
+
+    .reader-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 0 20px 24px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .reader-progress {
+      width: min(230px, 35vw);
+      height: 3px;
+      background: #c1beb6;
+    }
+
+    .reader-progress span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: var(--ink);
+    }
+
+    .settings-panel {
+      position: absolute;
+      z-index: 5;
+      top: 60px;
+      right: 28px;
+      width: 210px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      box-shadow: 0 5px 15px var(--shadow);
+    }
+
+    .settings-panel[hidden] {
+      display: none;
+    }
+
+    .settings-title {
+      margin: 0 0 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .font-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .font-controls button {
+      width: 36px;
+      height: 34px;
+      border: 1px solid var(--line);
+      background: transparent;
+      font-size: 16px;
+    }
+
+    .font-size-value {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 10;
+      max-width: min(390px, calc(100vw - 40px));
+      padding: 13px 16px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--white);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toast[hidden] {
+      display: none;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      clip-path: inset(50%);
+    }
+
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 190px minmax(0, 1fr);
+      }
+
+      .content {
+        padding: 34px 25px 44px;
+      }
+
+      .book-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px 10px;
+      }
+
+      .reader-stage {
+        grid-template-columns: 42px minmax(250px, 1fr) 42px;
+        gap: 8px;
+        padding-right: 12px;
+        padding-left: 12px;
+      }
+    }
+
+    @media (max-width: 650px) {
+      .app {
+        display: block;
+      }
+
+      .sidebar {
+        display: block;
+        padding: 10px 14px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line-light);
+      }
+
+      .brand {
+        padding: 0;
+      }
+
+      .brand-mark {
+        width: 30px;
+        height: 33px;
+        font-size: 20px;
+      }
+
+      .brand-name {
+        font-size: 20px;
+      }
+
+      .brand-caption,
+      .nav-label,
+      .sidebar-rule,
+      .sidebar-note {
+        display: none;
+      }
+
+      .nav {
+        display: flex;
+        gap: 5px;
+        margin-top: 10px;
+      }
+
+      .nav-button {
+        justify-content: center;
+        flex: 1;
+        min-width: 0;
+        min-height: 36px;
+        gap: 4px;
+        padding: 0 4px;
+        font-size: 11px;
+      }
+
+      .nav-icon {
+        display: none;
+      }
+
+      .nav-secondary {
+        display: none;
+      }
+
+      .topbar {
+        min-height: 54px;
+        padding: 9px 15px;
+      }
+
+      .topbar-note {
+        font-size: 10px;
+      }
+
+      .prototype-label {
+        padding: 6px 8px;
+        font-size: 9px;
+      }
+
+      .content {
+        padding: 27px 15px 34px;
+      }
+
+      .page-heading {
+        align-items: flex-start;
+        margin-bottom: 20px;
+      }
+
+      .page-heading .primary-button {
+        width: 42px;
+        min-width: 42px;
+        padding: 0;
+        overflow: hidden;
+        font-size: 0;
+      }
+
+      .page-heading .primary-button::before {
+        font-size: 20px;
+        content: "+";
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      .heading-detail {
+        font-size: 12px;
+      }
+
+      .library-tools {
+        align-items: stretch;
+        flex-direction: column-reverse;
+        gap: 10px;
+        margin-bottom: 18px;
+        padding: 10px 0;
+      }
+
+      .search {
+        width: 100%;
+      }
+
+      .filter-list {
+        justify-content: space-between;
+      }
+
+      .filter-button {
+        padding: 0 8px;
+        font-size: 11px;
+      }
+
+      .shelf {
+        padding: 10px 6px 20px;
+      }
+
+      .book-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px 5px;
+      }
+
+      .book-card {
+        padding: 5px 3px;
+      }
+
+      .cover-button {
+        width: min(100%, 142px);
+        margin-bottom: 10px;
+      }
+
+      .cover {
+        padding: 12px 10px;
+      }
+
+      .cover-title {
+        font-size: 18px;
+      }
+
+      .book-title {
+        font-size: 14px;
+      }
+
+      .book-author {
+        font-size: 11px;
+      }
+
+      .book-progress {
+        width: min(100%, 142px);
+      }
+
+      .continue-panel {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        margin-top: 22px;
+        padding: 15px;
+      }
+
+      .continue-panel .secondary-button {
+        width: 100%;
+      }
+
+      .reader-screen {
+        min-height: calc(100vh - 143px);
+      }
+
+      .reader-toolbar {
+        min-height: 56px;
+        padding: 8px 12px;
+      }
+
+      .reader-book-title {
+        max-width: 42vw;
+        font-size: 14px;
+      }
+
+      .reader-toolbar-actions {
+        gap: 5px;
+      }
+
+      .reader-toolbar .secondary-button {
+        min-height: 36px;
+        padding: 0 9px;
+        font-size: 11px;
+      }
+
+      .reader-toolbar .icon-button {
+        width: 36px;
+        min-height: 36px;
+      }
+
+      .reader-stage {
+        grid-template-columns: 32px minmax(0, 1fr) 32px;
+        gap: 5px;
+        min-height: calc(100vh - 225px);
+        padding: 14px 7px 10px;
+      }
+
+      .page {
+        min-height: min(65vh, 650px);
+        padding: 28px 22px 50px;
+        font-size: min(var(--reader-font-size), 17px);
+        line-height: 1.58;
+      }
+
+      .page-kicker {
+        margin-bottom: 25px;
+      }
+
+      .page h2 {
+        margin-bottom: 17px;
+      }
+
+      .page-button {
+        width: 32px;
+        height: 36px;
+        font-size: 16px;
+      }
+
+      .reader-footer {
+        gap: 9px;
+        padding-bottom: 18px;
+        font-size: 10px;
+      }
+
+      .reader-progress {
+        width: min(150px, 32vw);
+      }
+
+      .settings-panel {
+        top: 51px;
+        right: 9px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Основная навигация">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">Л</div>
+        <div>
+          <p class="brand-name">Лист</p>
+          <p class="brand-caption">личная библиотека</p>
+        </div>
+      </div>
+
+      <p class="nav-label">Книги</p>
+      <nav class="nav">
+        <button class="nav-button" type="button" aria-current="page" data-go-library>
+          <span class="nav-icon" aria-hidden="true">▤</span>
+          <span>Моя полка</span>
+        </button>
+        <button class="nav-button" type="button" data-filter-nav="reading">
+          <span class="nav-icon" aria-hidden="true">◷</span>
+          <span>Сейчас читаю</span>
+        </button>
+        <button class="nav-button" type="button" data-filter-nav="finished">
+          <span class="nav-icon" aria-hidden="true">✓</span>
+          <span>Прочитано</span>
+        </button>
+      </nav>
+
+      <hr class="sidebar-rule">
+      <p class="nav-label">Пространство</p>
+      <nav class="nav nav-secondary">
+        <button class="nav-button" type="button" data-toast="Настройки появятся в следующей итерации макета.">
+          <span class="nav-icon" aria-hidden="true">⚙</span>
+          <span>Настройки</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-note">
+        <strong>Спокойное чтение</strong>
+        Контрастная палитра и минимум лишних деталей — для экранов E-Ink.
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <span class="topbar-note">Книги рядом. Чтение без спешки.</span>
+        <span class="prototype-label"><span class="prototype-dot" aria-hidden="true"></span>Демо-макет</span>
+      </header>
+
+      <main>
+        <section class="library-screen" aria-labelledby="library-title">
+          <div class="content">
+            <div class="page-heading">
+              <div>
+                <p class="section-eyebrow">Ваша библиотека</p>
+                <h1 id="library-title">Моя полка</h1>
+                <p class="heading-detail">Продолжайте с того места, где остановились.</p>
+              </div>
+              <button class="primary-button" type="button" data-add-book>
+                <span aria-hidden="true">＋</span> Добавить книгу
+              </button>
+              <input class="visually-hidden" id="book-file" type="file" aria-label="Выбрать PDF или EPUB" accept=".pdf,.epub,application/pdf,application/epub+zip">
+            </div>
+
+            <div class="library-tools">
+              <div class="filter-list" role="group" aria-label="Фильтр книг">
+                <button class="filter-button" type="button" aria-pressed="true" data-filter="all">Все книги</button>
+                <button class="filter-button" type="button" aria-pressed="false" data-filter="reading">Читаю</button>
+                <button class="filter-button" type="button" aria-pressed="false" data-filter="finished">Прочитано</button>
+              </div>
+              <label class="visually-hidden" for="book-search">Поиск по библиотеке</label>
+              <input class="search" id="book-search" type="search" placeholder="Найти книгу или автора">
+            </div>
+
+            <div class="shelf-heading">
+              <h2>Книги на полке</h2>
+              <span class="book-count" id="book-count">4 книги</span>
+            </div>
+
+            <div class="shelf">
+              <div class="book-grid" id="book-grid">
+                <article class="book-card" data-status="reading" data-search="тихие города вера северова pdf">
+                  <button class="cover-button" type="button" data-open-book data-title="Тихие города" aria-label="Открыть книгу «Тихие города»">
+                    <span class="cover cover--north">
+                      <span class="cover-topline">Путевые заметки</span>
+                      <span class="cover-title">Тихие<br>города</span>
+                      <span class="cover-author">Вера Северова</span>
+                    </span>
+                  </button>
+                  <span class="book-title">Тихие города</span>
+                  <p class="book-author">Вера Северова</p>
+                  <span class="book-meta"><span>PDF</span><span class="meta-dot"></span><span>Читаю</span></span>
+                  <div class="book-progress" aria-label="Прочитано 38 процентов"><span style="width: 38%"></span></div>
+                </article>
+
+                <article class="book-card" data-status="finished" data-search="сад на краю света марк белов epub">
+                  <button class="cover-button" type="button" data-open-book data-title="Сад на краю света" aria-label="Открыть книгу «Сад на краю света»">
+                    <span class="cover cover--garden">
+                      <span class="cover-topline">История одного дома</span>
+                      <span class="cover-title">Сад на<br>краю света</span>
+                      <span class="cover-author">Марк Белов</span>
+                    </span>
+                  </button>
+                  <span class="book-title">Сад на краю света</span>
+                  <p class="book-author">Марк Белов</p>
+                  <span class="book-meta"><span>EPUB</span><span class="meta-dot"></span><span>Прочитано</span></span>
+                  <div class="book-progress" aria-label="Книга прочитана"><span style="width: 100%"></span></div>
+                </article>
+
+                <article class="book-card" data-status="reading" data-search="атлас ночных дорог алексей миронов epub">
+                  <button class="cover-button" type="button" data-open-book data-title="Атлас ночных дорог" aria-label="Открыть книгу «Атлас ночных дорог»">
+                    <span class="cover cover--atlas">
+                      <span class="cover-topline">Карты и рассказы</span>
+                      <span class="cover-title">Атлас<br>ночных дорог</span>
+                      <span class="cover-author">Алексей Миронов</span>
+                    </span>
+                  </button>
+                  <span class="book-title">Атлас ночных дорог</span>
+                  <p class="book-author">Алексей Миронов</p>
+                  <span class="book-meta"><span>EPUB</span><span class="meta-dot"></span><span>Читаю</span></span>
+                  <div class="book-progress" aria-label="Прочитано 12 процентов"><span style="width: 12%"></span></div>
+                </article>
+
+                <article class="book-card" data-status="finished" data-search="письма с севера анна лескова pdf">
+                  <button class="cover-button" type="button" data-open-book data-title="Письма с севера" aria-label="Открыть книгу «Письма с севера»">
+                    <span class="cover cover--letters">
+                      <span class="cover-topline">Собрание писем</span>
+                      <span class="cover-title">Письма<br>с севера</span>
+                      <span class="cover-author">Анна Лескова</span>
+                    </span>
+                  </button>
+                  <span class="book-title">Письма с севера</span>
+                  <p class="book-author">Анна Лескова</p>
+                  <span class="book-meta"><span>PDF</span><span class="meta-dot"></span><span>Прочитано</span></span>
+                  <div class="book-progress" aria-label="Книга прочитана"><span style="width: 100%"></span></div>
+                </article>
+              </div>
+              <div class="empty-state" id="empty-state">Книг не найдено. Попробуйте изменить запрос.</div>
+            </div>
+
+            <section class="continue-panel" aria-label="Продолжить чтение">
+              <div class="continue-copy">
+                <p class="section-eyebrow">Можно продолжить</p>
+                <h3>Тихие города</h3>
+                <p>Глава 4 · примерно 38% книги</p>
+              </div>
+              <button class="secondary-button" type="button" data-continue-reading>Продолжить чтение <span aria-hidden="true">→</span></button>
+            </section>
+          </div>
+        </section>
+
+        <section class="reader-screen" aria-label="Экран чтения" aria-hidden="true">
+          <div class="reader-toolbar">
+            <button class="secondary-button" type="button" data-go-library><span aria-hidden="true">←</span> Библиотека</button>
+            <h1 class="reader-book-title" id="reader-title">Тихие города</h1>
+            <div class="reader-toolbar-actions">
+              <button class="secondary-button" type="button" data-toast="В этом макете PDF пока не преобразуется. Здесь останется оригинал книги.">Оригинал</button>
+              <button class="icon-button" type="button" aria-label="Настройки текста" aria-expanded="false" data-settings-toggle>А</button>
+            </div>
+            <div class="settings-panel" id="settings-panel" hidden>
+              <p class="settings-title">Размер текста</p>
+              <div class="font-controls">
+                <button type="button" aria-label="Уменьшить текст" data-font-step="-1">−</button>
+                <span class="font-size-value" id="font-size-value">19 px</span>
+                <button type="button" aria-label="Увеличить текст" data-font-step="1">＋</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="reader-stage">
+            <button class="page-button" type="button" aria-label="Предыдущая страница" data-prev-page>‹</button>
+            <article class="page" aria-live="polite">
+              <p class="page-kicker">Часть первая · Глава четвёртая</p>
+              <h2 id="page-heading" tabindex="-1">Город, который слушал</h2>
+              <div class="page-copy" id="page-copy"></div>
+              <span class="page-number" id="page-number">1</span>
+            </article>
+            <button class="page-button" type="button" aria-label="Следующая страница" data-next-page>›</button>
+          </div>
+
+          <div class="reader-footer">
+            <span id="page-label">Страница 1 из 4</span>
+            <div class="reader-progress" role="progressbar" aria-label="Положение в книге" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1">
+              <span id="reader-progress-fill"></span>
+            </div>
+            <span id="percent-label">25%</span>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var pages = [
+        [
+          "Утром город просыпался не сразу. Сначала открывались окна на верхних этажах, потом во дворах звенели ведра, и только после этого трамвай начинал свой медленный разговор с рельсами.",
+          "Лена любила этот порядок. В нем не было ничего торжественного, зато каждый звук обещал, что день уже начался и никуда не торопится.",
+          "Она свернула с набережной в узкий переулок, где стены хранили прохладу даже в июле. На углу кто-то поставил деревянный стул и оставил на нем раскрытую книгу."
+        ],
+        [
+          "Книга лежала раскрытой на середине главы. Страницы были тяжелыми и чуть шероховатыми, словно их делали не для чтения, а для долгого хранения.",
+          "Лена посмотрела на пустую улицу. В окнах напротив отражалось облако, и от этого казалось, что дома движутся очень медленно, почти незаметно.",
+          "Она не стала искать хозяина. Просто перевернула страницу и прочла первую строку вслух."
+        ],
+        [
+          "Вечером дождь прошел над крышами, не коснувшись мостовой. После него воздух стал прозрачнее, а дальний берег приблизился.",
+          "Лена вернулась к стулу. Книги уже не было, но на сиденье остался сухой лист — аккуратный, с ровными прожилками и короткой надписью на обороте.",
+          "«Если потеряешь дорогу, спроси у того, кто никуда не спешит»."
+        ],
+        [
+          "На следующий день Лена пришла раньше обычного. Стул стоял на прежнем месте, рядом с ним теперь лежал маленький компас.",
+          "Стрелка не указывала на север. Она спокойно смотрела в сторону старого сада, который давно исчез с городских карт.",
+          "Лена закрыла компас ладонью и впервые за много лет решила свернуть с привычного маршрута."
+        ]
+      ];
+
+      var libraryScreen = document.querySelector(".library-screen");
+      var readerScreen = document.querySelector(".reader-screen");
+      var readerTitle = document.getElementById("reader-title");
+      var pageHeading = document.getElementById("page-heading");
+      var pageCopy = document.getElementById("page-copy");
+      var pageNumber = document.getElementById("page-number");
+      var pageLabel = document.getElementById("page-label");
+      var percentLabel = document.getElementById("percent-label");
+      var progressFill = document.getElementById("reader-progress-fill");
+      var progressBar = document.querySelector(".reader-progress");
+      var previousButton = document.querySelector("[data-prev-page]");
+      var nextButton = document.querySelector("[data-next-page]");
+      var toast = document.getElementById("toast");
+      var toastTimer = 0;
+      var currentPage = 0;
+      var currentBook = "Тихие города";
+      var currentFilter = "all";
+      var readerIsOpen = false;
+      var fontSize = 19;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.hidden = false;
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(function () {
+          toast.hidden = true;
+        }, 3300);
+      }
+
+      function showLibrary(filter) {
+        if (readerIsOpen) {
+          document.querySelector(".sidebar [data-go-library]").focus();
+        }
+        readerIsOpen = false;
+        libraryScreen.classList.remove("is-hidden");
+        readerScreen.classList.remove("is-active");
+        readerScreen.setAttribute("aria-hidden", "true");
+        document.querySelectorAll("[data-go-library]").forEach(function (button) {
+          button.setAttribute("aria-current", "page");
+        });
+        if (filter) {
+          setFilter(filter);
+        }
+      }
+
+      function showReader(title) {
+        currentBook = title || "Тихие города";
+        currentPage = 0;
+        readerTitle.textContent = currentBook;
+        libraryScreen.classList.add("is-hidden");
+        readerScreen.classList.add("is-active");
+        readerScreen.setAttribute("aria-hidden", "false");
+        readerIsOpen = true;
+        document.querySelectorAll("[data-go-library]").forEach(function (button) {
+          button.removeAttribute("aria-current");
+        });
+        renderPage();
+        pageHeading.focus();
+      }
+
+      function renderPage() {
+        pageCopy.replaceChildren();
+        pages[currentPage].forEach(function (paragraphText) {
+          var paragraph = document.createElement("p");
+          paragraph.textContent = paragraphText;
+          pageCopy.appendChild(paragraph);
+        });
+        pageNumber.textContent = String(currentPage + 1);
+        pageLabel.textContent = "Страница " + (currentPage + 1) + " из " + pages.length;
+        var percent = Math.round(((currentPage + 1) / pages.length) * 100);
+        percentLabel.textContent = percent + "%";
+        progressFill.style.width = percent + "%";
+        progressBar.setAttribute("aria-valuemax", String(pages.length));
+        progressBar.setAttribute("aria-valuenow", String(currentPage + 1));
+        previousButton.disabled = currentPage === 0;
+        nextButton.disabled = currentPage === pages.length - 1;
+      }
+
+      function movePage(direction) {
+        var nextPage = currentPage + direction;
+        if (nextPage < 0 || nextPage >= pages.length) {
+          return;
+        }
+        currentPage = nextPage;
+        renderPage();
+      }
+
+      function setFilter(filter) {
+        currentFilter = filter;
+        document.querySelectorAll("[data-filter]").forEach(function (button) {
+          button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
+        });
+        document.querySelectorAll("[data-filter-nav]").forEach(function (button) {
+          button.setAttribute("aria-current", button.dataset.filterNav === filter ? "page" : "false");
+        });
+        applyLibraryFilters();
+      }
+
+      function applyLibraryFilters() {
+        var query = document.getElementById("book-search").value.trim().toLocaleLowerCase("ru");
+        var visibleCount = 0;
+        document.querySelectorAll(".book-card").forEach(function (card) {
+          var matchesFilter = currentFilter === "all" || card.dataset.status === currentFilter;
+          var matchesQuery = !query || card.dataset.search.indexOf(query) !== -1;
+          var isVisible = matchesFilter && matchesQuery;
+          card.hidden = !isVisible;
+          if (isVisible) {
+            visibleCount += 1;
+          }
+        });
+        document.getElementById("book-count").textContent = visibleCount + (visibleCount === 1 ? " книга" : " книги");
+        document.getElementById("empty-state").style.display = visibleCount === 0 ? "block" : "none";
+      }
+
+      document.querySelectorAll("[data-open-book]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          showReader(button.dataset.title);
+        });
+      });
+
+      document.querySelectorAll("[data-go-library]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          showLibrary();
+        });
+      });
+
+      document.querySelectorAll("[data-filter]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          setFilter(button.dataset.filter);
+        });
+      });
+
+      document.querySelectorAll("[data-filter-nav]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          showLibrary(button.dataset.filterNav);
+        });
+      });
+
+      document.querySelector("[data-continue-reading]").addEventListener("click", function () {
+        showReader("Тихие города");
+      });
+
+      document.querySelector("[data-prev-page]").addEventListener("click", function () {
+        movePage(-1);
+      });
+
+      document.querySelector("[data-next-page]").addEventListener("click", function () {
+        movePage(1);
+      });
+
+      document.getElementById("book-search").addEventListener("input", applyLibraryFilters);
+
+      document.querySelectorAll("[data-toast]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          showToast(button.dataset.toast);
+        });
+      });
+
+      var fileInput = document.getElementById("book-file");
+      document.querySelector("[data-add-book]").addEventListener("click", function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener("change", function () {
+        if (!fileInput.files || fileInput.files.length === 0) {
+          return;
+        }
+        var file = fileInput.files[0];
+        var extension = file.name.split(".").pop().toLowerCase();
+        if (extension !== "pdf" && extension !== "epub") {
+          showToast("В макете можно выбрать только PDF или EPUB.");
+        } else {
+          showToast("Выбран файл «" + file.name + "». Веб-макет показывает интерфейс, но пока не открывает документы.");
+        }
+        fileInput.value = "";
+      });
+
+      var settingsPanel = document.getElementById("settings-panel");
+      var settingsToggle = document.querySelector("[data-settings-toggle]");
+      settingsToggle.addEventListener("click", function () {
+        var willOpen = settingsPanel.hidden;
+        settingsPanel.hidden = !willOpen;
+        settingsToggle.setAttribute("aria-expanded", String(willOpen));
+      });
+
+      document.querySelectorAll("[data-font-step]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          fontSize = Math.max(15, Math.min(25, fontSize + Number(button.dataset.fontStep)));
+          document.documentElement.style.setProperty("--reader-font-size", fontSize + "px");
+          document.getElementById("font-size-value").textContent = fontSize + " px";
+        });
+      });
+
+      document.addEventListener("keydown", function (event) {
+        if (!readerIsOpen || event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+        if (event.key === "ArrowRight" || event.key === "PageDown") {
+          event.preventDefault();
+          movePage(1);
+        } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+          event.preventDefault();
+          movePage(-1);
+        } else if (event.key === "Escape") {
+          showLibrary();
+        }
+      });
+
+      renderPage();
+    }());
+  </script>
+</body>
+</html>

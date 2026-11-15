@@ -1,0 +1,12 @@
+kind: "test_tool_activity"
+scope: "test_only"
+source: "https://github.com/shiaho777/web-to-app"
+revision: "5f91ac0cca4ea4a3b0da7ed4d6433a97b7d1920b"
+actions[7]{date,action,result}:
+  2026-11-15,inspect,"Confirmed the repository is a full Android app and contains no SKILL.md"
+  2026-11-15,clone,"Created a shallow checkout at test-tools/web-to-app"
+  2026-11-15,verify,"Confirmed the checkout commit and clean worktree; no tests or builds were run"
+  2026-11-15,scope,"Documented that the checkout is test-only and ignored by the parent repository"
+  2026-11-15,logging,"Created this TOON action log and its update instructions"
+  2026-11-15,transfer,"Copied the specification, agent guide, ignore rules, and test-only checkout into the reader folder"
+  2026-11-15,history_audit,"Reviewed available session history; after transfer, no further builds, tests, or changes used the reserved checkout. Reader development and Faust 3 smoke tests used this project's Android app, not web-to-app."

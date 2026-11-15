@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+.gradle/
+**/build/
+.cxx/
+*.apk
+local.properties
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# External checkout reserved for test/evaluation only
+test-tools/web-to-app/

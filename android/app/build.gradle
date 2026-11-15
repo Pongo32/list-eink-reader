@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'ru.reader.eink'
+    compileSdk 35
+    ndkVersion '23.2.8568313'
+
+    defaultConfig {
+        applicationId 'ru.reader.eink'
+        minSdk 19
+        targetSdk 19
+        versionCode 1
+        versionName '0.1.0'
+        ndk {
+            abiFilters 'armeabi-v7a'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_PLATFORM=android-19'
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file('src/main/cpp/CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'com.artifex.mupdf:fitz:1.15.0'
+}
