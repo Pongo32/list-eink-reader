@@ -225,7 +225,7 @@ public final class ReaderActivity extends Activity {
 
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(4), 0, dp(4), 0);
+        toolbar.setPadding(dp(4), 0, dp(68), 0);
         toolbar.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
         Button close = button(R.string.back_to_library);
         close.setOnClickListener(new View.OnClickListener() {
@@ -335,9 +335,9 @@ public final class ReaderActivity extends Activity {
         });
         bookmarkButton.setVisibility(View.GONE);
         FrameLayout.LayoutParams bookmarkButtonParams = new FrameLayout.LayoutParams(
-            dp(48), dp(56), Gravity.TOP | Gravity.RIGHT);
-        bookmarkButtonParams.topMargin = dp(60);
-        bookmarkButtonParams.rightMargin = dp(16);
+            dp(56), dp(72), Gravity.TOP | Gravity.RIGHT);
+        bookmarkButtonParams.topMargin = 0;
+        bookmarkButtonParams.rightMargin = dp(12);
         rootContainer.addView(bookmarkButton, bookmarkButtonParams);
 
         status = new TextView(this);
@@ -424,7 +424,7 @@ public final class ReaderActivity extends Activity {
         conversionPercent = new TextView(this);
         conversionPercent.setTextColor(Ui.SECONDARY);
         conversionPercent.setTextSize(Ui.TEXT_SMALL);
-        conversionPercent.setPadding(dp(4), 0, dp(4), 0);
+        conversionPercent.setPadding(dp(6), 0, 0, 0);
         conversionIndicator.addView(conversionPercent);
         conversionIndicator.setVisibility(View.GONE);
         footer.addView(conversionIndicator);
@@ -1597,9 +1597,14 @@ public final class ReaderActivity extends Activity {
         if (documentId == null) {
             return;
         }
-        getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit()
-                .putBoolean(progressKey(documentId) + ".finished", finished)
-                .apply();
+        String key = progressKey(documentId);
+        android.content.SharedPreferences.Editor editor =
+                getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit()
+                .putBoolean(key + ".finished", finished);
+        if (finished) {
+            editor.remove(key + ".finished_manual");
+        }
+        editor.apply();
     }
 
     static String progressKey(String id) {
@@ -1654,12 +1659,7 @@ public final class ReaderActivity extends Activity {
 
         BookmarkFlagView(android.content.Context context) {
             super(context);
-            android.graphics.drawable.StateListDrawable background =
-                new android.graphics.drawable.StateListDrawable();
-            background.addState(new int[] {android.R.attr.state_pressed},
-                Ui.box(context, Ui.INK, Ui.INK));
-            background.addState(new int[] {}, Ui.box(context, Ui.WHITE, Ui.INK));
-            setBackgroundDrawable(background);
+            setBackgroundDrawable(null);
             setContentDescription(getString(R.string.bookmarks_title));
             setClickable(true);
             setFocusable(true);
@@ -1678,14 +1678,10 @@ public final class ReaderActivity extends Activity {
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             float density = getResources().getDisplayMetrics().density;
-            float left = (getWidth() - 22 * density) / 2f;
-            float right = left + 22 * density;
-            float top = 5 * density;
-            float bottom = Math.min(getHeight() - 5 * density, 42 * density);
-            paint.setColor(isPressed() ? Ui.WHITE : Ui.INK);
-            paint.setStrokeWidth(2 * density);
-            paint.setStrokeJoin(Paint.Join.MITER);
-            paint.setStyle(Paint.Style.STROKE);
+            float left = (getWidth() - 28 * density) / 2f;
+            float right = left + 28 * density;
+            float top = 0f;
+            float bottom = Math.min(getHeight(), 44 * density);
             Path ribbon = new Path();
             ribbon.moveTo(left, top);
             ribbon.lineTo(right, top);
@@ -1693,11 +1689,15 @@ public final class ReaderActivity extends Activity {
             ribbon.lineTo((left + right) / 2f, bottom - 7 * density);
             ribbon.lineTo(left, bottom);
             ribbon.close();
-            if (bookmarked) {
+            paint.setStrokeWidth(2 * density);
+            paint.setStrokeJoin(Paint.Join.MITER);
+            if (bookmarked || isPressed()) {
                 paint.setStyle(Paint.Style.FILL);
+                paint.setColor(Ui.INK);
                 canvas.drawPath(ribbon, paint);
             }
             paint.setStyle(Paint.Style.STROKE);
+            paint.setColor(isPressed() ? Ui.WHITE : Ui.INK);
             canvas.drawPath(ribbon, paint);
         }
     }
