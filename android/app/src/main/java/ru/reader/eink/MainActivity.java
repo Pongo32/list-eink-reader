@@ -3,8 +3,11 @@ package ru.reader.eink;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
@@ -30,9 +33,9 @@ import java.util.concurrent.Future;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_OPEN_BOOK = 1;
-    private static final int INK = Color.rgb(38, 37, 33);
-    private static final int MUTED = Color.rgb(104, 101, 94);
-    private static final int PAPER = Color.rgb(248, 247, 242);
+    private static final int INK = Ui.INK;
+    private static final int MUTED = Ui.SECONDARY;
+    private static final int PAPER = Ui.WHITE;
     private static final String FILTER_ALL = "all";
     private static final String FILTER_READING = "reading";
     private static final String FILTER_FINISHED = "finished";
@@ -100,43 +103,47 @@ public final class MainActivity extends Activity {
 
         LinearLayout brandRow = new LinearLayout(this);
         brandRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView brand = text("Лист", 28, INK, true);
+        TextView brand = text("Лист", Ui.TEXT_TITLE, INK, true);
         brand.setTypeface(Typeface.SERIF, Typeface.NORMAL);
         brandRow.addView(brand, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        final View searchButton = new SearchIconView();
+        brandRow.addView(searchButton, new LinearLayout.LayoutParams(dp(Ui.TOUCH), dp(Ui.TOUCH)));
         Button addBook = smallButton(R.string.add_book);
+        addBook.setContentDescription(getString(R.string.add_book_description));
+        brandRow.addView(addBook, new LinearLayout.LayoutParams(dp(Ui.TOUCH), dp(Ui.TOUCH)));
         addBook.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 chooseBook();
             }
         });
-        brandRow.addView(addBook);
         screen.addView(brandRow, margins(0, 0, 0, 2));
-        screen.addView(text(R.string.library_subtitle, 13, MUTED, false),
-                margins(0, 0, 0, 12));
+        screen.addView(Ui.divider(this), new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(1)));
 
-        LinearLayout actionRow = new LinearLayout(this);
-        actionRow.setGravity(Gravity.CENTER_VERTICAL);
-        bookCount = text("", 12, MUTED, false);
-        actionRow.addView(bookCount, new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        Button refresh = smallButton(R.string.refresh_library);
-        refresh.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                refreshLibrary();
-            }
-        });
-        actionRow.addView(refresh);
-        screen.addView(actionRow, margins(0, 0, 0, 7));
+        bookCount = text("", Ui.TEXT_SMALL, MUTED, false);
 
         searchField = new EditText(this);
         searchField.setSingleLine(true);
-        searchField.setTextSize(15);
+        searchField.setTextSize(Ui.TEXT_BODY);
         searchField.setHint(R.string.search_books);
         searchField.setPadding(dp(12), 0, dp(12), 0);
-        searchField.setBackgroundColor(Color.WHITE);
+        searchField.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
+        searchField.setVisibility(View.GONE);
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                boolean show = searchField.getVisibility() != View.VISIBLE;
+                searchField.setVisibility(show ? View.VISIBLE : View.GONE);
+                if (show) {
+                    searchField.requestFocus();
+                } else {
+                    searchField.setText("");
+                    screen.requestFocus();
+                }
+            }
+        });
         searchField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence value, int start, int count, int after) {
@@ -161,21 +168,19 @@ public final class MainActivity extends Activity {
         addFilter(filters, R.string.filter_finished, FILTER_FINISHED);
         screen.addView(filters, margins(0, 0, 0, 8));
 
-        scanStatus = text(R.string.library_scanning, 12, MUTED, false);
-        screen.addView(scanStatus, margins(0, 0, 0, 5));
+        scanStatus = text(R.string.library_scanning, Ui.TEXT_SMALL, MUTED, false);
 
         continuePanel = new LinearLayout(this);
         continuePanel.setOrientation(LinearLayout.VERTICAL);
         continuePanel.setPadding(dp(12), dp(8), dp(12), dp(8));
-        continuePanel.setBackgroundColor(Color.rgb(232, 230, 222));
+        continuePanel.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
         screen.addView(continuePanel, margins(0, 0, 0, 8));
 
         bookGrid = new GridView(this);
-        bookGrid.setNumColumns(2);
+        bookGrid.setNumColumns(3);
         bookGrid.setVerticalSpacing(dp(8));
         bookGrid.setHorizontalSpacing(dp(6));
         bookGrid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        bookGrid.setSelector(android.R.color.transparent);
         adapter = new BookAdapter();
         bookGrid.setAdapter(adapter);
         bookGrid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -192,7 +197,15 @@ public final class MainActivity extends Activity {
         emptyState.setGravity(Gravity.CENTER);
         screen.addView(emptyState, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+        LinearLayout statusRow = new LinearLayout(this);
+        statusRow.setGravity(Gravity.CENTER_VERTICAL);
+        statusRow.addView(bookCount, new LinearLayout.LayoutParams(0,
+            dp(Ui.TOUCH), 1));
+        statusRow.addView(scanStatus);
+        screen.addView(statusRow);
         setContentView(screen);
+        screen.setFocusableInTouchMode(true);
+        screen.requestFocus();
         updateVisibleBooks();
     }
 
@@ -207,7 +220,7 @@ public final class MainActivity extends Activity {
                 updateVisibleBooks();
             }
         });
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(38), 1);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(Ui.TOUCH), 1);
         if (filters.getChildCount() > 0) {
             params.leftMargin = dp(5);
         }
@@ -246,8 +259,7 @@ public final class MainActivity extends Activity {
                                     opened, finished));
                         }
                         scanStatus.setText(result.inaccessibleDirectories
-                                ? R.string.library_scan_partial
-                                : R.string.library_scan_complete);
+                            ? getString(R.string.library_scan_partial) : "");
                         updateVisibleBooks();
                     }
                 });
@@ -277,10 +289,9 @@ public final class MainActivity extends Activity {
         for (int i = 0; i < filterButtons.size(); i++) {
             boolean selected = selectedFilter.equals(filterValues.get(i));
             Button button = filterButtons.get(i);
-            button.setTextColor(selected ? Color.WHITE : INK);
-            button.setBackgroundColor(selected ? INK : Color.rgb(232, 230, 222));
+            Ui.styleTab(button, selected);
         }
-        bookCount.setText(getString(R.string.library_book_count, visibleBooks.size()));
+        bookCount.setText(getString(R.string.library_book_count, books.size()));
         boolean hasBooks = !visibleBooks.isEmpty();
         bookGrid.setVisibility(hasBooks ? View.VISIBLE : View.GONE);
         emptyState.setVisibility(hasBooks ? View.GONE : View.VISIBLE);
@@ -310,9 +321,41 @@ public final class MainActivity extends Activity {
             return;
         }
         continuePanel.setVisibility(View.VISIBLE);
-        continuePanel.addView(text(R.string.continue_reading, 11, MUTED, true));
-        Button resume = smallButton(latest.title);
-        resume.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        continuePanel.addView(text(R.string.continue_reading, Ui.TEXT_SMALL, MUTED, true));
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout cover = new LinearLayout(this);
+        cover.setOrientation(LinearLayout.VERTICAL);
+        cover.setGravity(Gravity.CENTER);
+        cover.setPadding(dp(6), dp(6), dp(6), dp(6));
+        cover.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
+        TextView coverTitle = text(latest.title, Ui.TEXT_SMALL, INK, true);
+        coverTitle.setTypeface(Typeface.SERIF, Typeface.BOLD);
+        coverTitle.setGravity(Gravity.CENTER);
+        coverTitle.setMaxLines(3);
+        coverTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        cover.addView(coverTitle, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+        TextView coverFormat = text(latest.format, Ui.TEXT_SMALL, MUTED, true);
+        coverFormat.setGravity(Gravity.CENTER);
+        cover.addView(coverFormat);
+        row.addView(cover, new LinearLayout.LayoutParams(dp(80), dp(112)));
+
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        details.setPadding(dp(10), 0, 0, 0);
+        TextView title = text(latest.title, Ui.TEXT_BODY, INK, true);
+        title.setTypeface(Typeface.SERIF, Typeface.BOLD);
+        title.setMaxLines(2);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        details.addView(title);
+        int percent = latest.pageCount > 1 ? Math.max(0, Math.min(100,
+            latest.lastPage * 100 / (latest.pageCount - 1))) : 0;
+        TextView progress = text(getString(R.string.continue_progress,
+                percent, Math.max(1, latest.lastPage + 1), latest.pageCount),
+                Ui.TEXT_SMALL, MUTED, false);
+        details.addView(progress, margins(0, 2, 0, 4));
+        Button resume = smallButton(R.string.continue_button);
         resume.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -321,7 +364,10 @@ public final class MainActivity extends Activity {
             }
         });
         resume.setTag(latest);
-        continuePanel.addView(resume);
+        details.addView(resume);
+        row.addView(details, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        continuePanel.addView(row);
     }
 
     private void chooseBook() {
@@ -364,12 +410,7 @@ public final class MainActivity extends Activity {
     private Button smallButton(String label) {
         Button button = new Button(this);
         button.setText(label);
-        button.setTextSize(12);
-        button.setTextColor(INK);
-        button.setAllCaps(false);
-        button.setMinHeight(dp(38));
-        button.setPadding(dp(8), 0, dp(8), 0);
-        button.setBackgroundColor(Color.rgb(232, 230, 222));
+        Ui.styleButton(button);
         return button;
     }
 
@@ -381,7 +422,7 @@ public final class MainActivity extends Activity {
     private TextView text(String value, int sizeSp, int color, boolean bold) {
         TextView label = new TextView(this);
         label.setText(value);
-        label.setTextSize(sizeSp);
+        label.setTextSize(Math.max(Ui.TEXT_SMALL, sizeSp));
         label.setTextColor(color);
         if (bold) {
             label.setTypeface(null, Typeface.BOLD);
@@ -398,6 +439,42 @@ public final class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private final class SearchIconView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        SearchIconView() {
+            super(MainActivity.this);
+            StateListDrawable background = new StateListDrawable();
+            background.addState(new int[] {android.R.attr.state_pressed},
+                    Ui.box(getContext(), Ui.INK, Ui.INK));
+                background.addState(new int[] {}, Ui.box(getContext(), Ui.WHITE, Ui.INK));
+            setBackgroundDrawable(background);
+            setContentDescription(getString(R.string.search_books));
+            setClickable(true);
+            setFocusable(true);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float density = getResources().getDisplayMetrics().density;
+            float centerX = getWidth() / 2f - 2 * density;
+            float centerY = getHeight() / 2f - 2 * density;
+            paint.setColor(isPressed() ? Ui.WHITE : Ui.INK);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2 * density);
+            canvas.drawCircle(centerX, centerY, 7 * density, paint);
+            canvas.drawLine(centerX + 5 * density, centerY + 5 * density,
+                    centerX + 11 * density, centerY + 11 * density, paint);
+        }
+
+        @Override
+        protected void drawableStateChanged() {
+            super.drawableStateChanged();
+            invalidate();
+        }
     }
 
     private final class BookAdapter extends BaseAdapter {
@@ -431,8 +508,8 @@ public final class MainActivity extends Activity {
             cover.setOrientation(LinearLayout.VERTICAL);
             cover.setGravity(Gravity.CENTER);
             cover.setPadding(dp(10), dp(12), dp(10), dp(12));
-            cover.setBackgroundColor(Color.rgb(222, 220, 212));
-            TextView mark = text(book.format, 11, MUTED, true);
+            cover.setBackground(Ui.box(MainActivity.this, Ui.WHITE, Ui.INK));
+            TextView mark = text(book.format, Ui.TEXT_SMALL, MUTED, true);
             mark.setGravity(Gravity.CENTER);
             cover.addView(mark, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
@@ -447,33 +524,19 @@ public final class MainActivity extends Activity {
                     LinearLayout.LayoutParams.MATCH_PARENT, dp(148));
             card.addView(cover, coverParams);
 
-            TextView title = text(book.title, 14, INK, true);
-            title.setSingleLine(true);
-            title.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            title.setGravity(Gravity.CENTER);
-            card.addView(title, margins(0, 6, 0, 1));
-            String state = book.finished ? getString(R.string.book_finished)
-                    : book.opened ? getString(R.string.book_in_progress)
-                    : book.format;
-            TextView detail = text(state, 11, MUTED, false);
+                String state;
+                if (book.finished) {
+                state = getString(R.string.book_finished);
+                } else if (book.opened && book.pageCount > 1) {
+                    int percent = Math.max(0, Math.min(100,
+                            book.lastPage * 100 / Math.max(1, book.pageCount - 1)));
+                state = getString(R.string.book_progress_percent, percent);
+                } else {
+                state = getString(R.string.book_new);
+                }
+            TextView detail = text(state, Ui.TEXT_SMALL, MUTED, false);
             detail.setGravity(Gravity.CENTER);
             card.addView(detail);
-            if (book.pageCount > 1 && book.opened) {
-                int percent = Math.max(0, Math.min(100,
-                        book.lastPage * 100 / Math.max(1, book.pageCount - 1)));
-                FrameLayout track = new FrameLayout(MainActivity.this);
-                track.setBackgroundColor(Color.rgb(205, 203, 195));
-                int trackWidth = Math.max(dp(40), parent.getWidth() / 2 - dp(22));
-                FrameLayout.LayoutParams progressParams = new FrameLayout.LayoutParams(
-                        Math.max(1, trackWidth * percent / 100), dp(3), Gravity.LEFT);
-                View progress = new View(MainActivity.this);
-                progress.setBackgroundColor(INK);
-                track.addView(progress, progressParams);
-                LinearLayout.LayoutParams trackParams = new LinearLayout.LayoutParams(
-                        trackWidth, dp(3));
-                trackParams.topMargin = dp(5);
-                card.addView(track, trackParams);
-            }
             card.setTag(book);
             return card;
         }

@@ -2,6 +2,8 @@
     <style name="AppTheme" parent="@android:style/Theme.Holo.Light.NoActionBar">
         <item name="android:windowBackground">#ffffff</item>
         <item name="android:colorAccent">#222222</item>
+        <item name="android:textColorPrimary">#000000</item>
+        <item name="android:textColorSecondary">#444444</item>
         <item name="android:fontFamily">sans</item>
     </style>
 </resources>

@@ -73,17 +73,20 @@ public final class ReaderActivity extends Activity {
     private ImageView zoomImage;
     private TextView status;
     private TextView pageLabel;
+    private TextView pagePercent;
     private TextView titleLabel;
+    private View toolbarOverlay;
+    private Button epubFontMenuButton;
     private Button previousButton;
     private Button nextButton;
     private LinearLayout epubFontControls;
+    private LinearLayout fontSheet;
     private Button decreaseEpubFontButton;
     private Button increaseEpubFontButton;
     private TextView epubFontSizeLabel;
     private BookmarkFlagView bookmarkButton;
     private Button addBookmarkButton;
     private LinearLayout conversionIndicator;
-    private View conversionDot;
     private TextView conversionPercent;
     private View bookmarkDismissArea;
     private LinearLayout bookmarkPanel;
@@ -104,6 +107,7 @@ public final class ReaderActivity extends Activity {
     private boolean conversionStarted;
     private String documentId;
     private String documentTitle;
+    private boolean controlsVisible;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -202,13 +206,27 @@ public final class ReaderActivity extends Activity {
         rootContainer = new FrameLayout(this);
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setPadding(dp(8), dp(6), dp(8), dp(6));
+        screen.setPadding(0, 0, 0, 0);
         screen.setBackgroundColor(Color.WHITE);
         rootContainer.addView(screen, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
+        bookmarkDismissArea = new View(this);
+        bookmarkDismissArea.setBackgroundColor(Color.TRANSPARENT);
+        bookmarkDismissArea.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                closeBookmarkPanel();
+            }
+        });
+        bookmarkDismissArea.setVisibility(View.GONE);
+        rootContainer.addView(bookmarkDismissArea, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar.setPadding(dp(4), 0, dp(4), 0);
+        toolbar.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
         Button close = button(R.string.back_to_library);
         close.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -230,7 +248,7 @@ public final class ReaderActivity extends Activity {
         epubFontControls = new LinearLayout(this);
         epubFontControls.setGravity(Gravity.CENTER_VERTICAL);
         decreaseEpubFontButton = button(R.string.epub_font_decrease);
-        decreaseEpubFontButton.setMinWidth(dp(38));
+        decreaseEpubFontButton.setMinWidth(dp(Ui.TOUCH));
         decreaseEpubFontButton.setPadding(dp(2), 0, dp(2), 0);
         decreaseEpubFontButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -241,12 +259,12 @@ public final class ReaderActivity extends Activity {
         epubFontControls.addView(decreaseEpubFontButton);
         epubFontSizeLabel = new TextView(this);
         epubFontSizeLabel.setTextColor(Color.BLACK);
-        epubFontSizeLabel.setTextSize(12);
+        epubFontSizeLabel.setTextSize(Ui.TEXT_SMALL);
         epubFontSizeLabel.setGravity(Gravity.CENTER);
         epubFontControls.addView(epubFontSizeLabel, new LinearLayout.LayoutParams(
                 dp(28), LinearLayout.LayoutParams.WRAP_CONTENT));
         increaseEpubFontButton = button(R.string.epub_font_increase);
-        increaseEpubFontButton.setMinWidth(dp(38));
+        increaseEpubFontButton.setMinWidth(dp(Ui.TOUCH));
         increaseEpubFontButton.setPadding(dp(2), 0, dp(2), 0);
         increaseEpubFontButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -255,27 +273,88 @@ public final class ReaderActivity extends Activity {
             }
         });
         epubFontControls.addView(increaseEpubFontButton);
-        epubFontControls.setVisibility(View.GONE);
-        toolbar.addView(epubFontControls);
+        epubFontMenuButton = button(R.string.epub_font_menu);
+        epubFontMenuButton.setContentDescription(getString(R.string.epub_font_size_label));
+        epubFontMenuButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                fontSheet.setVisibility(fontSheet.getVisibility() == View.VISIBLE
+                        ? View.GONE : View.VISIBLE);
+            }
+        });
+        toolbar.addView(epubFontMenuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        Button bookmarksMenuButton = button(R.string.bookmarks_menu);
+        bookmarksMenuButton.setContentDescription(getString(R.string.bookmarks_title));
+        bookmarksMenuButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+            toggleBookmarkPanel();
+            }
+        });
+        toolbar.addView(bookmarksMenuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        toolbar.setVisibility(View.GONE);
+        toolbarOverlay = toolbar;
+        FrameLayout.LayoutParams toolbarParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, dp(56), Gravity.TOP);
+        rootContainer.addView(toolbar, toolbarParams);
+
+        fontSheet = new LinearLayout(this);
+        fontSheet.setOrientation(LinearLayout.VERTICAL);
+        fontSheet.setGravity(Gravity.CENTER_HORIZONTAL);
+        fontSheet.setPadding(dp(16), dp(10), dp(16), dp(12));
+        fontSheet.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
+        View handle = new View(this);
+        handle.setBackgroundColor(Ui.INK);
+        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(dp(40), dp(4));
+        handleParams.bottomMargin = dp(10);
+        fontSheet.addView(handle, handleParams);
+        TextView fontSizeTitle = new TextView(this);
+        fontSizeTitle.setText(R.string.epub_font_size_label);
+        fontSizeTitle.setTextColor(Ui.INK);
+        fontSizeTitle.setTextSize(Ui.TEXT_BODY);
+        LinearLayout.LayoutParams fontSizeTitleParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        fontSizeTitleParams.bottomMargin = dp(8);
+        fontSheet.addView(fontSizeTitle, fontSizeTitleParams);
+        epubFontControls.setVisibility(View.VISIBLE);
+        fontSheet.addView(epubFontControls, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(Ui.TOUCH)));
+        fontSheet.setVisibility(View.GONE);
+        FrameLayout.LayoutParams fontSheetParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            (int) (getResources().getDisplayMetrics().heightPixels * 0.35f),
+            Gravity.BOTTOM);
+        rootContainer.addView(fontSheet, fontSheetParams);
+
         bookmarkButton = new BookmarkFlagView(this);
         bookmarkButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                toggleBookmarkPanel();
+            toggleCurrentBookmark();
             }
         });
-        toolbar.addView(bookmarkButton, new LinearLayout.LayoutParams(dp(44), dp(44)));
-        screen.addView(toolbar, margins(0, 0, 0, 4));
+        bookmarkButton.setVisibility(View.GONE);
+        FrameLayout.LayoutParams bookmarkButtonParams = new FrameLayout.LayoutParams(
+            dp(48), dp(56), Gravity.TOP | Gravity.RIGHT);
+        bookmarkButtonParams.topMargin = dp(60);
+        bookmarkButtonParams.rightMargin = dp(16);
+        rootContainer.addView(bookmarkButton, bookmarkButtonParams);
 
         status = new TextView(this);
         status.setText(R.string.book_opening);
-        status.setTextColor(Color.DKGRAY);
-        status.setTextSize(13);
+        status.setTextColor(Ui.SECONDARY);
+        status.setTextSize(18);
         status.setGravity(Gravity.CENTER);
-        screen.addView(status, margins(0, 0, 0, 4));
+        FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER);
+        statusParams.leftMargin = dp(20);
+        statusParams.rightMargin = dp(20);
+        rootContainer.addView(status, statusParams);
 
         pageImage = new ImageView(this);
         pageImage.setBackgroundColor(Color.WHITE);
+        pageImage.setPadding(dp(20), dp(12), dp(20), dp(4));
         pageImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
         pageImage.setOnTouchListener(new View.OnTouchListener() {
             @Override
@@ -289,10 +368,18 @@ public final class ReaderActivity extends Activity {
                     showImageZoom(imageBounds);
                     return true;
                 }
-                float fraction = event.getX() / Math.max(1, view.getWidth());
-                if (fraction < 0.35f) {
+                float fractionX = event.getX() / Math.max(1, view.getWidth());
+                float fractionY = event.getY() / Math.max(1, view.getHeight());
+                if (controlsVisible) {
+                    fontSheet.setVisibility(View.GONE);
+                    setControlsVisible(false);
+                } else if (fontSheet.getVisibility() == View.VISIBLE) {
+                    fontSheet.setVisibility(View.GONE);
+                } else if (fractionY < 0.12f || fractionY > 0.88f) {
+                    setControlsVisible(true);
+                } else if (fractionX < 0.33f) {
                     movePage(-1);
-                } else if (fraction > 0.65f) {
+                } else {
                     movePage(1);
                 }
                 return true;
@@ -304,6 +391,8 @@ public final class ReaderActivity extends Activity {
 
         LinearLayout footer = new LinearLayout(this);
         footer.setGravity(Gravity.CENTER_VERTICAL);
+        footer.setPadding(dp(8), 0, dp(8), 0);
+        footer.setBackgroundColor(Ui.WHITE);
         previousButton = button(R.string.previous_page);
         nextButton = button(R.string.next_page);
         previousButton.setEnabled(false);
@@ -320,43 +409,27 @@ public final class ReaderActivity extends Activity {
                 movePage(1);
             }
         });
-        footer.addView(previousButton);
         pageLabel = new TextView(this);
-        pageLabel.setTextColor(Color.DKGRAY);
-        pageLabel.setTextSize(13);
-        pageLabel.setGravity(Gravity.CENTER);
+        pageLabel.setTextColor(Ui.SECONDARY);
+        pageLabel.setTextSize(Ui.TEXT_SMALL);
+        pageLabel.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
         footer.addView(pageLabel, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        pagePercent = new TextView(this);
+        pagePercent.setTextColor(Ui.SECONDARY);
+        pagePercent.setTextSize(Ui.TEXT_SMALL);
+        footer.addView(pagePercent);
         conversionIndicator = new LinearLayout(this);
         conversionIndicator.setGravity(Gravity.CENTER_VERTICAL);
-        conversionDot = new View(this);
-        GradientDrawable dot = new GradientDrawable();
-        dot.setShape(GradientDrawable.OVAL);
-        dot.setColor(Color.DKGRAY);
-        conversionDot.setBackgroundDrawable(dot);
-        conversionIndicator.addView(conversionDot, new LinearLayout.LayoutParams(
-                dp(8), dp(8)));
         conversionPercent = new TextView(this);
-        conversionPercent.setTextColor(Color.DKGRAY);
-        conversionPercent.setTextSize(12);
+        conversionPercent.setTextColor(Ui.SECONDARY);
+        conversionPercent.setTextSize(Ui.TEXT_SMALL);
         conversionPercent.setPadding(dp(4), 0, dp(4), 0);
         conversionIndicator.addView(conversionPercent);
         conversionIndicator.setVisibility(View.GONE);
         footer.addView(conversionIndicator);
-        footer.addView(nextButton);
-        screen.addView(footer, margins(0, 4, 0, 0));
-
-        bookmarkDismissArea = new View(this);
-        bookmarkDismissArea.setBackgroundColor(Color.TRANSPARENT);
-        bookmarkDismissArea.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                closeBookmarkPanel();
-            }
-        });
-        bookmarkDismissArea.setVisibility(View.GONE);
-        rootContainer.addView(bookmarkDismissArea, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        screen.addView(footer, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(28)));
 
         bookmarkPanel = new LinearLayout(this);
         bookmarkPanel.setOrientation(LinearLayout.VERTICAL);
@@ -384,10 +457,22 @@ public final class ReaderActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
         bookmarkPanel.setVisibility(View.GONE);
         FrameLayout.LayoutParams bookmarkPanelParams = new FrameLayout.LayoutParams(
-                dp(250), dp(460), Gravity.LEFT | Gravity.CENTER_VERTICAL);
-        bookmarkPanelParams.leftMargin = dp(12);
+            (int) (getResources().getDisplayMetrics().widthPixels * 0.7f),
+            (int) (getResources().getDisplayMetrics().heightPixels * 0.6f),
+            Gravity.TOP | Gravity.RIGHT);
+        bookmarkPanelParams.topMargin = dp(56);
+        bookmarkPanelParams.rightMargin = dp(8);
         rootContainer.addView(bookmarkPanel, bookmarkPanelParams);
         setContentView(rootContainer);
+    }
+
+    private void setControlsVisible(boolean visible) {
+        controlsVisible = visible;
+        toolbarOverlay.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (!visible && fontSheet != null) {
+            fontSheet.setVisibility(View.GONE);
+        }
+        updateBookmarkButton();
     }
 
     private void openDocument(final Uri documentUri) {
@@ -577,7 +662,7 @@ public final class ReaderActivity extends Activity {
     }
 
     private void updateEpubFontControls() {
-        epubFontControls.setVisibility(reflowable ? View.VISIBLE : View.GONE);
+        epubFontMenuButton.setVisibility(reflowable ? View.VISIBLE : View.GONE);
         epubFontSizeLabel.setText(String.valueOf(epubFontSize));
         epubFontSizeLabel.setContentDescription(getString(
                 R.string.epub_font_size_description, epubFontSize));
@@ -605,8 +690,10 @@ public final class ReaderActivity extends Activity {
         }
         final int pageIndex = Math.max(0, Math.min(requestedPage, displayPages.size() - 1));
         final PageItem currentItem = displayPages.get(pageIndex);
-        final int width = pageImage.getWidth();
-        final int height = pageImage.getHeight();
+        final int width = pageImage.getWidth() - pageImage.getPaddingLeft()
+            - pageImage.getPaddingRight();
+        final int height = pageImage.getHeight() - pageImage.getPaddingTop()
+            - pageImage.getPaddingBottom();
         if (width <= 0 || height <= 0) {
             return;
         }
@@ -743,8 +830,10 @@ public final class ReaderActivity extends Activity {
         }
         final int requestId = ++renderRequestId;
         final PageItem pageItem = displayPages.get(pageNumber);
-        final int width = pageImage.getWidth();
-        final int height = pageImage.getHeight();
+        final int width = pageImage.getWidth() - pageImage.getPaddingLeft()
+            - pageImage.getPaddingRight();
+        final int height = pageImage.getHeight() - pageImage.getPaddingTop()
+            - pageImage.getPaddingBottom();
         if (width <= 0 || height <= 0) {
             pageImage.post(new Runnable() {
                 @Override
@@ -858,11 +947,14 @@ public final class ReaderActivity extends Activity {
             previousButton.setEnabled(false);
             nextButton.setEnabled(false);
             pageLabel.setText("");
+            pagePercent.setText("");
             updateBookmarkButton();
             return;
         }
         currentPage = Math.max(0, Math.min(currentPage, pageCount - 1));
         pageLabel.setText(getString(R.string.book_page_label, currentPage + 1, pageCount));
+        int percent = currentPage * 100 / Math.max(1, pageCount - 1);
+        pagePercent.setText(getString(R.string.book_progress_percent, percent));
         previousButton.setEnabled(currentPage > 0);
         nextButton.setEnabled(currentPage + 1 < pageCount);
         updateBookmarkButton();
@@ -897,7 +989,7 @@ public final class ReaderActivity extends Activity {
         if (bookmarks.isEmpty()) {
             TextView empty = new TextView(this);
             empty.setText(R.string.bookmarks_empty);
-            empty.setTextColor(Color.DKGRAY);
+            empty.setTextColor(Ui.SECONDARY);
             empty.setPadding(dp(4), dp(8), dp(4), dp(8));
             bookmarkList.addView(empty);
             return;
@@ -1124,6 +1216,7 @@ public final class ReaderActivity extends Activity {
             saved = findBookmark(readBookmarks(), item.sourcePage, item.part) != null;
         }
         bookmarkButton.setBookmarked(saved);
+        bookmarkButton.setVisibility(controlsVisible || saved ? View.VISIBLE : View.GONE);
     }
 
     private RectF findEpubImageAt(float viewX, float viewY) {
@@ -1131,10 +1224,16 @@ public final class ReaderActivity extends Activity {
                 || displayedImageBounds.isEmpty()) {
             return null;
         }
-        float scale = Math.min(pageImage.getWidth() / (float) displayedBitmap.getWidth(),
-                pageImage.getHeight() / (float) displayedBitmap.getHeight());
-        float offsetX = (pageImage.getWidth() - displayedBitmap.getWidth() * scale) / 2f;
-        float offsetY = (pageImage.getHeight() - displayedBitmap.getHeight() * scale) / 2f;
+        int contentWidth = pageImage.getWidth() - pageImage.getPaddingLeft()
+            - pageImage.getPaddingRight();
+        int contentHeight = pageImage.getHeight() - pageImage.getPaddingTop()
+            - pageImage.getPaddingBottom();
+        float scale = Math.min(contentWidth / (float) displayedBitmap.getWidth(),
+            contentHeight / (float) displayedBitmap.getHeight());
+        float offsetX = pageImage.getPaddingLeft()
+            + (contentWidth - displayedBitmap.getWidth() * scale) / 2f;
+        float offsetY = pageImage.getPaddingTop()
+            + (contentHeight - displayedBitmap.getHeight() * scale) / 2f;
         float bitmapX = (viewX - offsetX) / scale;
         float bitmapY = (viewY - offsetY) / scale;
         for (RectF bounds : displayedImageBounds) {
@@ -1175,9 +1274,9 @@ public final class ReaderActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         TextView hint = new TextView(this);
         hint.setText(R.string.image_zoom_hint);
-        hint.setTextColor(Color.DKGRAY);
+        hint.setTextColor(Ui.INK);
         hint.setGravity(Gravity.CENTER);
-        hint.setBackgroundColor(Color.LTGRAY);
+        hint.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
         FrameLayout.LayoutParams hintParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, dp(36), Gravity.BOTTOM);
         zoomOverlay.addView(hint, hintParams);
@@ -1204,7 +1303,7 @@ public final class ReaderActivity extends Activity {
         GradientDrawable background = new GradientDrawable();
         background.setColor(Color.WHITE);
         background.setCornerRadius(dp(2));
-        background.setStroke(dp(1), Color.DKGRAY);
+        background.setStroke(dp(Ui.LINE), Ui.INK);
         return background;
     }
 
@@ -1438,13 +1537,11 @@ public final class ReaderActivity extends Activity {
                     return;
                 }
                 if (percent >= 100) {
-                    conversionDot.setVisibility(View.GONE);
                     conversionIndicator.setVisibility(View.GONE);
                     return;
                 }
                 conversionIndicator.setVisibility(View.VISIBLE);
-                conversionPercent.setText(percent + "%");
-                conversionDot.setVisibility(View.VISIBLE);
+                conversionPercent.setText(getString(R.string.book_adaptation_percent, percent));
             }
         });
     }
@@ -1557,7 +1654,12 @@ public final class ReaderActivity extends Activity {
 
         BookmarkFlagView(android.content.Context context) {
             super(context);
-            setBackgroundColor(Color.LTGRAY);
+            android.graphics.drawable.StateListDrawable background =
+                new android.graphics.drawable.StateListDrawable();
+            background.addState(new int[] {android.R.attr.state_pressed},
+                Ui.box(context, Ui.INK, Ui.INK));
+            background.addState(new int[] {}, Ui.box(context, Ui.WHITE, Ui.INK));
+            setBackgroundDrawable(background);
             setContentDescription(getString(R.string.bookmarks_title));
             setClickable(true);
             setFocusable(true);
@@ -1566,6 +1668,8 @@ public final class ReaderActivity extends Activity {
         void setBookmarked(boolean saved) {
             if (bookmarked != saved) {
                 bookmarked = saved;
+                setContentDescription(getString(saved
+                        ? R.string.bookmark_remove_page : R.string.bookmark_add_page));
                 invalidate();
             }
         }
@@ -1574,41 +1678,34 @@ public final class ReaderActivity extends Activity {
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             float density = getResources().getDisplayMetrics().density;
-            float poleX = getWidth() / 2f - 2 * density;
-            float top = getHeight() / 2f - 12 * density;
-            float bottom = getHeight() / 2f + 12 * density;
-            paint.setColor(Color.BLACK);
-            paint.setStrokeWidth(1.8f * density);
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setStrokeJoin(Paint.Join.ROUND);
+            float left = (getWidth() - 22 * density) / 2f;
+            float right = left + 22 * density;
+            float top = 5 * density;
+            float bottom = Math.min(getHeight() - 5 * density, 42 * density);
+            paint.setColor(isPressed() ? Ui.WHITE : Ui.INK);
+            paint.setStrokeWidth(2 * density);
+            paint.setStrokeJoin(Paint.Join.MITER);
             paint.setStyle(Paint.Style.STROKE);
-            canvas.drawLine(poleX, top, poleX, bottom, paint);
-
-            Path flag = new Path();
-            flag.moveTo(poleX, top);
-            flag.lineTo(poleX + 13 * density, top);
-            flag.lineTo(poleX + 9 * density, top + 7 * density);
-            flag.lineTo(poleX + 13 * density, top + 14 * density);
-            flag.lineTo(poleX, top + 14 * density);
-            flag.close();
+            Path ribbon = new Path();
+            ribbon.moveTo(left, top);
+            ribbon.lineTo(right, top);
+            ribbon.lineTo(right, bottom);
+            ribbon.lineTo((left + right) / 2f, bottom - 7 * density);
+            ribbon.lineTo(left, bottom);
+            ribbon.close();
             if (bookmarked) {
                 paint.setStyle(Paint.Style.FILL);
-                canvas.drawPath(flag, paint);
-            } else {
-                paint.setStyle(Paint.Style.STROKE);
-                canvas.drawPath(flag, paint);
+                canvas.drawPath(ribbon, paint);
             }
+            paint.setStyle(Paint.Style.STROKE);
+            canvas.drawPath(ribbon, paint);
         }
     }
 
     private Button button(int resourceId) {
         Button button = new Button(this);
         button.setText(resourceId);
-        button.setTextColor(Color.BLACK);
-        button.setTextSize(13);
-        button.setAllCaps(false);
-        button.setBackgroundColor(Color.LTGRAY);
-        button.setMinHeight(dp(44));
+        Ui.styleButton(button);
         return button;
     }
 
