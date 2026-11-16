@@ -16,8 +16,6 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -58,7 +56,6 @@ public final class MainActivity extends Activity {
     private String searchQuery = "";
     private boolean destroyed;
     private GridView bookGrid;
-    private TextView scanStatus;
     private TextView emptyState;
     private TextView bookCount;
     private LinearLayout continuePanel;
@@ -66,13 +63,7 @@ public final class MainActivity extends Activity {
     private BookAdapter adapter;
     private Future<?> scanTask;
     private int scanGeneration;
-    private int currentPage;
-    private int perPage = 3;
-    private float bookGridTouchX;
-    private float bookGridTouchY;
-    private Button previousBooksPage;
-    private Button nextBooksPage;
-    private TextView pageIndicator;
+    private boolean scanPartial;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,24 +102,6 @@ public final class MainActivity extends Activity {
         openBook(documentUri, data.getFlags(), null, null);
     }
 
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        int keyCode = event.getKeyCode();
-        boolean previousPage = keyCode == KeyEvent.KEYCODE_DPAD_LEFT
-                || keyCode == KeyEvent.KEYCODE_PAGE_UP
-                || keyCode == KeyEvent.KEYCODE_VOLUME_UP;
-        boolean nextPage = keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
-                || keyCode == KeyEvent.KEYCODE_PAGE_DOWN
-                || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN;
-        if (previousPage || nextPage) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                showBooksPage(currentPage + (previousPage ? -1 : 1));
-            }
-            return true;
-        }
-        return super.dispatchKeyEvent(event);
-    }
-
     private void buildLibrary() {
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
@@ -137,12 +110,19 @@ public final class MainActivity extends Activity {
 
         LinearLayout brandRow = new LinearLayout(this);
         brandRow.setGravity(Gravity.CENTER_VERTICAL);
+        bookCount = text("", Ui.TEXT_SMALL, MUTED, false);
         TextView brand = text(R.string.library_title, Ui.TEXT_TITLE, INK, true);
         brand.setTypeface(Typeface.SERIF, Typeface.NORMAL);
         brand.setSingleLine(true);
         brand.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        brandRow.addView(brand, new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        brandRow.addView(brand);
+        LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        countParams.leftMargin = dp(10);
+        countParams.topMargin = dp(6);
+        bookCount.setSingleLine(true);
+        brandRow.addView(bookCount, countParams);
+        brandRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
         final View searchButton = new SearchIconView();
         brandRow.addView(searchButton, new LinearLayout.LayoutParams(dp(Ui.TOUCH), dp(Ui.TOUCH)));
         Button addBook = smallButton(R.string.add_book);
@@ -157,8 +137,6 @@ public final class MainActivity extends Activity {
         screen.addView(brandRow, margins(0, 0, 0, 2));
         screen.addView(Ui.divider(this), new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, dp(1)));
-
-        bookCount = text("", Ui.TEXT_SMALL, MUTED, false);
 
         searchField = new EditText(this);
         searchField.setSingleLine(true);
@@ -188,7 +166,6 @@ public final class MainActivity extends Activity {
             @Override
             public void onTextChanged(CharSequence value, int start, int before, int count) {
                 searchQuery = value.toString().trim().toLowerCase(java.util.Locale.getDefault());
-                currentPage = 0;
                 updateVisibleBooks();
             }
 
@@ -205,9 +182,6 @@ public final class MainActivity extends Activity {
         addFilter(filters, R.string.filter_finished, FILTER_FINISHED);
         screen.addView(filters, margins(0, 0, 0, 8));
 
-        scanStatus = text("", Ui.TEXT_SMALL, MUTED, false);
-        scanStatus.setVisibility(View.GONE);
-
         continuePanel = new LinearLayout(this);
         continuePanel.setOrientation(LinearLayout.VERTICAL);
         continuePanel.setPadding(dp(12), dp(8), dp(12), dp(8));
@@ -219,51 +193,29 @@ public final class MainActivity extends Activity {
         bookGrid.setVerticalSpacing(dp(8));
         bookGrid.setHorizontalSpacing(dp(6));
         bookGrid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
+        bookGrid.setClipToPadding(false);
+        bookGrid.setPadding(0, 0, 0, dp(8));
+        bookGrid.setVerticalScrollBarEnabled(false);
+        bookGrid.setOverScrollMode(View.OVER_SCROLL_NEVER);
         adapter = new BookAdapter();
         bookGrid.setAdapter(adapter);
         bookGrid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                int bookIndex = currentPage * perPage + position;
-                if (bookIndex < 0 || bookIndex >= visibleBooks.size()) {
+                if (position < 0 || position >= visibleBooks.size()) {
                     return;
                 }
-                Book book = visibleBooks.get(bookIndex);
+                Book book = visibleBooks.get(position);
                 openBook(Uri.fromFile(book.file), 0, book.id, book.title);
             }
         });
         bookGrid.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                int bookIndex = currentPage * perPage + position;
-                if (position >= 0 && bookIndex >= 0 && bookIndex < visibleBooks.size()) {
-                    showBookMenu(visibleBooks.get(bookIndex));
+                if (position >= 0 && position < visibleBooks.size()) {
+                    showBookMenu(visibleBooks.get(position));
                 }
                 return true;
-            }
-        });
-        bookGrid.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    bookGridTouchX = event.getX();
-                    bookGridTouchY = event.getY();
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    float deltaX = event.getX() - bookGridTouchX;
-                    float deltaY = event.getY() - bookGridTouchY;
-                    if (Math.abs(deltaX) > dp(72) && Math.abs(deltaX) > Math.abs(deltaY)) {
-                        showBooksPage(currentPage + (deltaX < 0 ? 1 : -1));
-                        return true;
-                    }
-                }
-                return false;
-            }
-        });
-        bookGrid.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-            @Override
-            public void onLayoutChange(View view, int left, int top, int right, int bottom,
-                    int oldLeft, int oldTop, int oldRight, int oldBottom) {
-                updatePageCapacity();
             }
         });
         screen.addView(bookGrid, new LinearLayout.LayoutParams(
@@ -273,45 +225,10 @@ public final class MainActivity extends Activity {
         emptyState.setGravity(Gravity.CENTER);
         screen.addView(emptyState, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
-        LinearLayout pagerRow = new LinearLayout(this);
-        pagerRow.setGravity(Gravity.CENTER_VERTICAL);
-        previousBooksPage = smallButton(R.string.previous_page);
-        previousBooksPage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                showBooksPage(currentPage - 1);
-            }
-        });
-        pagerRow.addView(previousBooksPage, new LinearLayout.LayoutParams(dp(56), dp(56)));
-        pageIndicator = text("", Ui.TEXT_SMALL, INK, true);
-        pageIndicator.setGravity(Gravity.CENTER);
-        pagerRow.addView(pageIndicator, new LinearLayout.LayoutParams(0, dp(56), 1));
-        nextBooksPage = smallButton(R.string.next_page);
-        nextBooksPage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                showBooksPage(currentPage + 1);
-            }
-        });
-        pagerRow.addView(nextBooksPage, new LinearLayout.LayoutParams(dp(56), dp(56)));
-        LinearLayout pagerInfo = new LinearLayout(this);
-        pagerInfo.setOrientation(LinearLayout.VERTICAL);
-        pagerInfo.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
-        pagerInfo.addView(bookCount);
-        pagerInfo.addView(scanStatus);
-        pagerRow.addView(pagerInfo, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(56)));
-        screen.addView(pagerRow);
         setContentView(screen);
         screen.setFocusableInTouchMode(true);
         screen.requestFocus();
         updateVisibleBooks();
-        bookGrid.post(new Runnable() {
-            @Override
-            public void run() {
-                updatePageCapacity();
-            }
-        });
     }
 
     private void addFilter(LinearLayout filters, int label, final String filter) {
@@ -322,7 +239,6 @@ public final class MainActivity extends Activity {
             @Override
             public void onClick(View view) {
                 selectedFilter = filter;
-                currentPage = 0;
                 updateVisibleBooks();
             }
         });
@@ -334,14 +250,13 @@ public final class MainActivity extends Activity {
     }
 
     private void refreshLibrary() {
-        if (destroyed || scanStatus == null) {
+        if (destroyed || adapter == null) {
             return;
         }
         if (scanTask != null) {
             scanTask.cancel(true);
         }
         final int generation = ++scanGeneration;
-        scanStatus.setVisibility(View.GONE);
         scanTask = scanner.submit(new Runnable() {
             @Override
             public void run() {
@@ -356,11 +271,7 @@ public final class MainActivity extends Activity {
                         for (Book scanned : result.books) {
                             books.add(withProgress(scanned));
                         }
-                        scanStatus.setText(result.inaccessibleDirectories
-                            ? getString(R.string.library_scan_partial) : "");
-                        scanStatus.setVisibility(result.inaccessibleDirectories
-                            ? View.VISIBLE : View.GONE);
-                        currentPage = 0;
+                        scanPartial = result.inaccessibleDirectories;
                         updateVisibleBooks();
                     }
                 });
@@ -418,65 +329,23 @@ public final class MainActivity extends Activity {
                 }
             });
         }
-        int pageCount = getBooksPageCount();
-        currentPage = Math.max(0, Math.min(currentPage, Math.max(0, pageCount - 1)));
         adapter.notifyDataSetChanged();
-        updatePager();
         for (int i = 0; i < filterButtons.size(); i++) {
             boolean selected = selectedFilter.equals(filterValues.get(i));
             Button button = filterButtons.get(i);
             Ui.styleTab(button, selected);
         }
-        bookCount.setText(getString(R.string.library_book_count, books.size()));
+        String count = getResources().getQuantityString(
+                R.plurals.library_book_count, books.size(), books.size());
+        bookCount.setText(scanPartial
+                ? getString(R.string.library_book_count_partial, count,
+                        getString(R.string.library_scan_partial))
+                : count);
         boolean hasBooks = !visibleBooks.isEmpty();
         bookGrid.setVisibility(hasBooks ? View.VISIBLE : View.GONE);
         emptyState.setVisibility(hasBooks ? View.GONE : View.VISIBLE);
         emptyState.setText(books.isEmpty() ? R.string.library_empty : R.string.library_no_matches);
         updateContinuePanel();
-    }
-
-    private int getBooksPageCount() {
-        return visibleBooks.isEmpty() ? 0 : (visibleBooks.size() + perPage - 1) / perPage;
-    }
-
-    private void updatePager() {
-        int pageCount = getBooksPageCount();
-        pageIndicator.setText(getString(R.string.library_page_count,
-                pageCount == 0 ? 0 : currentPage + 1, pageCount));
-        previousBooksPage.setEnabled(currentPage > 0);
-        nextBooksPage.setEnabled(currentPage + 1 < pageCount);
-        bookCount.setText(getString(R.string.library_book_count, books.size()));
-    }
-
-    private void showBooksPage(int page) {
-        int pageCount = getBooksPageCount();
-        if (page < 0 || page >= pageCount || page == currentPage) {
-            return;
-        }
-        currentPage = page;
-        adapter.notifyDataSetChanged();
-        bookGrid.setSelection(0);
-        updatePager();
-    }
-
-    private void updatePageCapacity() {
-        if (bookGrid == null || bookGrid.getHeight() <= 0) {
-            return;
-        }
-        Paint textPaint = new Paint();
-        textPaint.setTextSize(Ui.TEXT_SMALL * getResources().getDisplayMetrics().scaledDensity);
-        Paint.FontMetrics metrics = textPaint.getFontMetrics();
-        int textLineHeight = (int) Math.ceil(metrics.descent - metrics.ascent);
-        int cellHeight = dp(148 + 4 + 6 + 8) + textLineHeight;
-        int rows = Math.max(1, bookGrid.getHeight() / cellHeight);
-        int newPerPage = rows * 3;
-        if (newPerPage == perPage) {
-            return;
-        }
-        perPage = newPerPage;
-        currentPage = Math.min(currentPage, Math.max(0, getBooksPageCount() - 1));
-        adapter.notifyDataSetChanged();
-        updatePager();
     }
 
     private void updateContinuePanel() {
@@ -720,23 +589,22 @@ public final class MainActivity extends Activity {
     private final class BookAdapter extends BaseAdapter {
         @Override
         public int getCount() {
-            int start = currentPage * perPage;
-            return Math.min(perPage, Math.max(0, visibleBooks.size() - start));
+            return visibleBooks.size();
         }
 
         @Override
         public Object getItem(int position) {
-            return visibleBooks.get(currentPage * perPage + position);
+            return visibleBooks.get(position);
         }
 
         @Override
         public long getItemId(int position) {
-            return currentPage * perPage + position;
+            return position;
         }
 
         @Override
         public View getView(int position, View convertView, android.view.ViewGroup parent) {
-            final Book book = visibleBooks.get(currentPage * perPage + position);
+            final Book book = visibleBooks.get(position);
             LinearLayout card = convertView instanceof LinearLayout
                     ? (LinearLayout) convertView : new LinearLayout(MainActivity.this);
             card.setOrientation(LinearLayout.VERTICAL);
@@ -748,7 +616,7 @@ public final class MainActivity extends Activity {
             LinearLayout cover = new LinearLayout(MainActivity.this);
             cover.setOrientation(LinearLayout.VERTICAL);
             cover.setGravity(Gravity.CENTER);
-            cover.setPadding(dp(10), dp(12), dp(10), dp(12));
+            cover.setPadding(dp(6), dp(12), dp(6), dp(12));
             cover.setBackground(Ui.box(MainActivity.this, Ui.WHITE, Ui.INK));
             TextView mark = text(book.format, Ui.TEXT_SMALL, MUTED, true);
             mark.setGravity(Gravity.CENTER);
@@ -759,6 +627,14 @@ public final class MainActivity extends Activity {
             coverTitle.setGravity(Gravity.CENTER);
             coverTitle.setMaxLines(3);
             coverTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            int coverWidth = bookGrid.getColumnWidth();
+            if (coverWidth <= 0 && parent.getWidth() > 0) {
+                int gridWidth = parent.getWidth() - parent.getPaddingLeft()
+                        - parent.getPaddingRight() - 2 * bookGrid.getHorizontalSpacing();
+                coverWidth = gridWidth / 3;
+            }
+            int titleWidth = Math.max(dp(1), coverWidth - dp(24));
+            fitCoverTitle(coverTitle, book.title, titleWidth);
             cover.addView(coverTitle, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 2));
             LinearLayout.LayoutParams coverParams = new LinearLayout.LayoutParams(
@@ -781,5 +657,23 @@ public final class MainActivity extends Activity {
             card.setTag(book);
             return card;
         }
+    }
+
+    private void fitCoverTitle(TextView view, String title, int availablePx) {
+        Paint paint = new Paint(view.getPaint());
+        float sizeSp = 15f;
+        float density = getResources().getDisplayMetrics().scaledDensity;
+        while (sizeSp > 12f) {
+            paint.setTextSize(sizeSp * density);
+            float widestWord = 0f;
+            for (String word : title.split("\\s+")) {
+                widestWord = Math.max(widestWord, paint.measureText(word));
+            }
+            if (widestWord <= availablePx) {
+                break;
+            }
+            sizeSp -= 0.5f;
+        }
+        view.setTextSize(sizeSp);
     }
 }

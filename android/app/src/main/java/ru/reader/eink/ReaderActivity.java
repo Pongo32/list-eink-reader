@@ -70,7 +70,8 @@ public final class ReaderActivity extends Activity {
     private Bitmap zoomBitmap;
     private FrameLayout rootContainer;
     private ImageView pageImage;
-    private ImageView zoomImage;
+    private ZoomPanView zoomView;
+    private TextView zoomLabel;
     private TextView status;
     private TextView pageLabel;
     private TextView pagePercent;
@@ -166,10 +167,11 @@ public final class ReaderActivity extends Activity {
             rootContainer.removeView(zoomOverlay);
             zoomOverlay = null;
         }
-        if (zoomImage != null) {
-            zoomImage.setImageDrawable(null);
-            zoomImage = null;
+        if (zoomView != null) {
+            zoomView.setBitmap(null);
+            zoomView = null;
         }
+        zoomLabel = null;
         if (zoomBitmap != null && zoomBitmap != displayedBitmap) {
             zoomBitmap.recycle();
         }
@@ -283,15 +285,20 @@ public final class ReaderActivity extends Activity {
             }
         });
         toolbar.addView(epubFontMenuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        Button bookmarksMenuButton = button(R.string.bookmarks_menu);
-        bookmarksMenuButton.setContentDescription(getString(R.string.bookmarks_title));
-        bookmarksMenuButton.setOnClickListener(new View.OnClickListener() {
+        bookmarkButton = new BookmarkFlagView(this);
+        bookmarkButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-            toggleBookmarkPanel();
+                toggleCurrentBookmark();
             }
         });
-        toolbar.addView(bookmarksMenuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        bookmarkButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                toggleBookmarkPanel();
+                return true;
+            }
+        });
         toolbar.setVisibility(View.GONE);
         toolbarOverlay = toolbar;
         FrameLayout.LayoutParams toolbarParams = new FrameLayout.LayoutParams(
@@ -326,13 +333,6 @@ public final class ReaderActivity extends Activity {
             Gravity.BOTTOM);
         rootContainer.addView(fontSheet, fontSheetParams);
 
-        bookmarkButton = new BookmarkFlagView(this);
-        bookmarkButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-            toggleCurrentBookmark();
-            }
-        });
         bookmarkButton.setVisibility(View.GONE);
         FrameLayout.LayoutParams bookmarkButtonParams = new FrameLayout.LayoutParams(
             dp(56), dp(72), Gravity.TOP | Gravity.RIGHT);
@@ -1260,26 +1260,62 @@ public final class ReaderActivity extends Activity {
                 right - left, bottom - top);
         zoomOverlay = new FrameLayout(this);
         zoomOverlay.setBackgroundColor(Color.WHITE);
-        zoomOverlay.setClickable(true);
-        zoomOverlay.setOnClickListener(new View.OnClickListener() {
+        zoomView = new ZoomPanView(this);
+        zoomView.setBitmap(zoomBitmap);
+        zoomView.setListener(new ZoomPanView.Listener() {
+            @Override
+            public void onTapAtFit() {
+                closeImageZoom();
+            }
+
+            @Override
+            public void onZoomChanged(float zoom) {
+                zoomLabel.setText(((int) zoom) + "\u00d7");
+            }
+        });
+        FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+        imageParams.bottomMargin = dp(56);
+        zoomOverlay.addView(zoomView, imageParams);
+
+        LinearLayout bar = new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(8), 0, dp(8), 0);
+        bar.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
+        Button zoomOut = button(R.string.zoom_out);
+        zoomOut.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                zoomView.zoomStep(-1);
+            }
+        });
+        bar.addView(zoomOut, new LinearLayout.LayoutParams(dp(56), dp(48)));
+        zoomLabel = new TextView(this);
+        zoomLabel.setText("1\u00d7");
+        zoomLabel.setTextColor(Ui.INK);
+        zoomLabel.setTextSize(Ui.TEXT_BODY);
+        zoomLabel.setGravity(Gravity.CENTER);
+        bar.addView(zoomLabel, new LinearLayout.LayoutParams(dp(56), dp(48)));
+        Button zoomIn = button(R.string.zoom_in);
+        zoomIn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                zoomView.zoomStep(1);
+            }
+        });
+        bar.addView(zoomIn, new LinearLayout.LayoutParams(dp(56), dp(48)));
+        bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        Button close = button(R.string.zoom_close);
+        close.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 closeImageZoom();
             }
         });
-        zoomImage = new ImageView(this);
-        zoomImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        zoomImage.setImageBitmap(zoomBitmap);
-        zoomOverlay.addView(zoomImage, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        TextView hint = new TextView(this);
-        hint.setText(R.string.image_zoom_hint);
-        hint.setTextColor(Ui.INK);
-        hint.setGravity(Gravity.CENTER);
-        hint.setBackground(Ui.box(this, Ui.WHITE, Ui.INK));
-        FrameLayout.LayoutParams hintParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, dp(36), Gravity.BOTTOM);
-        zoomOverlay.addView(hint, hintParams);
+        bar.addView(close, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)));
+        zoomOverlay.addView(bar, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, dp(56), Gravity.BOTTOM));
         rootContainer.addView(zoomOverlay, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
     }
@@ -1289,10 +1325,11 @@ public final class ReaderActivity extends Activity {
             rootContainer.removeView(zoomOverlay);
             zoomOverlay = null;
         }
-        if (zoomImage != null) {
-            zoomImage.setImageDrawable(null);
-            zoomImage = null;
+        if (zoomView != null) {
+            zoomView.setBitmap(null);
+            zoomView = null;
         }
+        zoomLabel = null;
         if (zoomBitmap != null && zoomBitmap != displayedBitmap) {
             zoomBitmap.recycle();
         }

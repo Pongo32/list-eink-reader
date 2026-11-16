@@ -10,10 +10,15 @@
     <string name="filter_reading">Читаю</string>
     <string name="filter_finished">Прочитано</string>
     <string name="library_scanning">Ищем PDF и EPUB…</string>
-    <string name="library_scan_partial">Часть папок недоступна</string>
+    <string name="library_scan_partial">не все папки</string>
     <string name="library_scan_complete">Библиотека обновлена.</string>
-    <string name="library_book_count">Книг: %1$d</string>
-    <string name="library_page_count">%1$d / %2$d</string>
+    <plurals name="library_book_count">
+        <item quantity="one">%d книга</item>
+        <item quantity="few">%d книги</item>
+        <item quantity="many">%d книг</item>
+        <item quantity="other">%d книги</item>
+    </plurals>
+    <string name="library_book_count_partial">%1$s · %2$s</string>
     <string name="continue_reading">ПРОДОЛЖИТЬ ЧТЕНИЕ</string>
     <string name="continue_button">Продолжить</string>
     <string name="continue_progress">%1$d%% · страница %2$d из %3$d</string>
@@ -43,7 +48,6 @@
     <string name="previous_page">‹</string>
     <string name="next_page">›</string>
     <string name="bookmarks_title">Закладки</string>
-    <string name="bookmarks_menu">≡</string>
     <string name="bookmark_open">Открыть</string>
     <string name="bookmark_add_page">Добавить закладку</string>
     <string name="bookmark_remove_page">Убрать закладку</string>
@@ -51,10 +55,12 @@
     <string name="bookmark_saving">Сохраняем…</string>
     <string name="bookmark_page">Страница %1$d</string>
     <string name="bookmark_page_part">Страница %1$d · часть %2$d</string>
-    <string name="bookmarks_empty">Закладок пока нет.</string>
+    <string name="bookmarks_empty">Закладок пока нет. Коснитесь флажка, чтобы добавить; удерживайте флажок, чтобы открыть список.</string>
     <string name="bookmark_save_error">Не удалось сохранить закладку.</string>
     <string name="bookmark_open_error">Не удалось открыть закладку.</string>
-    <string name="image_zoom_hint">Коснитесь, чтобы закрыть</string>
+    <string name="zoom_out">−</string>
+    <string name="zoom_in">+</string>
+    <string name="zoom_close">Закрыть</string>
     <string name="epub_font_decrease">A-</string>
     <string name="epub_font_increase">A+</string>
     <string name="epub_font_menu">Aa</string>
